@@ -6,8 +6,15 @@ import (
 )
 
 func main() {
-	err := utils.HandleEmails()
+	// Get the list of valid email addresses
+	validEmails, err := utils.GetValidEmails()
 	if err != nil {
-		log.Fatalf("Error handling emails: %v", err)
+		log.Fatalf("Error validating emails: %v", err)
+	}
+
+	// Send emails only to valid email addresses
+	err = utils.SendEmailsToValidRecipients(validEmails)
+	if err != nil {
+		log.Fatalf("Error sending emails: %v", err)
 	}
 }

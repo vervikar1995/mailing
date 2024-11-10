@@ -7,77 +7,111 @@ import (
 	"net/smtp"
 	"os"
 	"regexp"
+	"sync"
 )
 
+const maxConcurrency = 20 // Maximum number of concurrently running goroutines
+
 func SendEmail(to []string, subject, body string) error {
+	// SMTP server configuration
 	smtpHost := "smtp.gmail.com"
 	smtpPort := "587"
 	sender := "vervikar@gmail.com"
-	password := "vkeh zuxc ivka kmyp"
+	password := "vkeh zuxc ivka kmyp" // App-specific password for Gmail
 
-	// Формируем сообщение
+	// Compose the message
 	msg := "From: " + sender + "\n" +
-		"To: " + to[0] + "\n" + // Простой пример, только один получатель
+		"To: " + to[0] + "\n" +
 		"Subject: " + subject + "\n\n" +
 		body
 
+	// Set up authentication
 	auth := smtp.PlainAuth("", sender, password, smtpHost)
 
+	// Send the email
 	err := smtp.SendMail(smtpHost+":"+smtpPort, auth, sender, to, []byte(msg))
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("Email sent successfully")
+	fmt.Println("Email sent successfully:", to[0])
 	return nil
 }
 
-func HandleEmails() error {
+func GetValidEmails() ([]string, error) {
+	// Open file containing email addresses
 	file, err := os.Open("db.txt")
 	if err != nil {
-		return fmt.Errorf("error opening file: %v", err)
+		return nil, fmt.Errorf("error opening file: %v", err)
 	}
 	defer file.Close()
 
+	// Regex for email validation
 	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
 
+	validEmails := []string{}
 	scanner := bufio.NewScanner(file)
+
+	// Check each email and add valid ones to the list
 	for scanner.Scan() {
-		line := scanner.Text()
-
-		if emailRegex.MatchString(line) {
-			fmt.Println("Valid email:", line)
-
-			messageFile, err := os.Open("letter.txt")
-			if err != nil {
-				return fmt.Errorf("error opening message file: %v", err)
-			}
-			defer messageFile.Close()
-
-			var body string
-			scannerMessage := bufio.NewScanner(messageFile)
-			for scannerMessage.Scan() {
-				body += scannerMessage.Text() + "\n"
-			}
-
-			if err := scannerMessage.Err(); err != nil {
-				return fmt.Errorf("error reading message file: %v", err)
-			}
-
-			recipients := []string{line}
-			subject := "Wisespace"
-			err = SendEmail(recipients, subject, body)
-			if err != nil {
-				log.Printf("Error sending email to %s: %v", line, err)
-			}
+		email := scanner.Text()
+		if emailRegex.MatchString(email) {
+			validEmails = append(validEmails, email)
 		} else {
-			fmt.Println("Invalid email:", line)
+			fmt.Println("Invalid email:", email)
 		}
 	}
 
+	// Check for scanning errors
 	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("error reading file: %v", err)
+		return nil, fmt.Errorf("error reading file: %v", err)
 	}
+
+	return validEmails, nil
+}
+
+func SendEmailsToValidRecipients(validEmails []string) error {
+	// Open the file with the message text
+	messageFile, err := os.Open("letter.txt")
+	if err != nil {
+		return fmt.Errorf("error opening message file: %v", err)
+	}
+	defer messageFile.Close()
+
+	// Read all lines from the file into the `body` variable
+	var body string
+	scanner := bufio.NewScanner(messageFile)
+	for scanner.Scan() {
+		body += scanner.Text() + "\n"
+	}
+
+	// Handle any scanning error
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("error reading message file: %v", err)
+	}
+
+	var wg sync.WaitGroup
+	semaphore := make(chan struct{}, maxConcurrency)
+
+	// Launch goroutines to send emails to each recipient
+	for _, email := range validEmails {
+		wg.Add(1)
+		semaphore <- struct{}{} // Limit the number of concurrently running goroutines
+
+		go func(recipient string) {
+			defer wg.Done()
+			defer func() { <-semaphore }() // Release slot for the next goroutine
+
+			subject := "Wisespace"
+			err := SendEmail([]string{recipient}, subject, body)
+			if err != nil {
+				log.Printf("Error sending email to %s: %v", recipient, err)
+			}
+		}(email)
+	}
+
+	// Wait for all goroutines to finish
+	wg.Wait()
 
 	return nil
 }
