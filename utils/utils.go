@@ -16,8 +16,8 @@ func SendEmail(to []string, subject, body string) error {
 	// SMTP server configuration
 	smtpHost := "smtp.gmail.com"
 	smtpPort := "587"
-	sender := "vervikar@gmail.com"
-	password := "vkeh zuxc ivka kmyp" // App-specific password for Gmail
+	sender := "" //your gmail account
+	password := "" // App-specific password for Gmail
 
 	// Compose the message
 	msg := "From: " + sender + "\n" +
