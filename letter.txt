@@ -1,0 +1,8 @@
+Hello!
+I hope this message finds you well.
+
+I'm Christofher, founder of Wisepace, and previously a board member and founder of LookinLabs, as well as a former student at Tallinn Polytechnic College. At Wisepace, we provide mentoring services focused on a "work-based" learning approach that prepares students for real-world IT roles. Our program includes task management through Jira, weekly mentorship meetings, collaborative projects with fellow developers, and thorough code reviews from industry experts.
+
+We're not looking to compete with academies; instead, we're interested in a partnership that complements curriculum of other academies, helping to strengthen students' industry readiness and contribute positively to the future of the IT job market.
+
+If you're open to exploring this further, could we arrange a call to discuss potential collaboration?
